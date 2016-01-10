@@ -1,0 +1,2 @@
+rm main.o hello.o
+rm hello

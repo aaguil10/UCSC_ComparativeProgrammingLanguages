@@ -1,0 +1,18 @@
+##!/bin/sh -x
+#export PATH=$PATH:/afs/cats.ucsc.edu/courses/cmps012b-wm/bin/
+checksource ../pmake
+#exec >check.log 2>&1
+#PATH=$PATH:`pwd`
+#export PATH
+#pwd
+for dir in `pwd`/test?
+do
+   echo "*************************************"
+   echo $dir
+   echo "*************************************"
+   cd $dir
+   cp ../../pmake $dir
+   #pwd
+   ./Check
+   rm pmake
+done

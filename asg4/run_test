@@ -1,0 +1,5 @@
+checksource pmake
+cp pmake score/test4/
+cd score/test4
+./Check
+rm pmake

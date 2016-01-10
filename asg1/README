@@ -1,0 +1,12 @@
+Alejandro Aguilar
+aaguil10@ucsc.edu
+
+The largest bug that I've have is that I can't do statements like the one below:
+(+ (+ 1 1) (+ 2 2)) 
+
+It will only evaluate the first expession (+ 1 1). It works for all other cases
+so this will throw off many of the test cases so please be kind!
+
+"let" also does not work completly but it's late and I have work in a couple of 
+hours...
+

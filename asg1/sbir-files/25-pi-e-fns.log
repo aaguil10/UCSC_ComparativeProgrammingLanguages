@@ -1,0 +1,23 @@
+substring: contract violation
+  expected: exact-nonnegative-integer?
+  given: -1
+  argument position: 2nd
+  other arguments...:
+   ""
+   0
+  context...:
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:379:27: clean_brakets_back
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:404:31: clean_brakets_spotless
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:258:21: return_value
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:42:18: print_imp
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:42:18: print_imp
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:528:21: control_flow
+3.1415926535 2.7182818284
+
+-444 = -444
+
+
+-111 = -111
+
+
+sqrt 

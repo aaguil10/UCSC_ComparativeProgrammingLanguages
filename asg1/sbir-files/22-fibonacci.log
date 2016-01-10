@@ -1,0 +1,23 @@
++: contract violation
+  expected: number?
+  given: #f
+  argument position: 1st
+  other arguments...:
+   0.0
+  context...:
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:289:25: expression_logic
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:289:25: expression_logic
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:168:16: let_imp
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:528:21: control_flow
+fib( 0 )= 0
+
+
+
+fib( 1 )= 1
+
+
+
+fib( 2.0 )= 1.0
+
+
+

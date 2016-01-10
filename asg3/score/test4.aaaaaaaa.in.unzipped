@@ -1,0 +1,9 @@
+Object: nil error: did not understand #value
+MessageNotUnderstood(Exception)>>signal (ExcHandling.st:254)
+UndefinedObject(Object)>>doesNotUnderstand: #value (SysExcept.st:1448)
+BitStream>>nextBit (../BitStream.st:65)
+BitStream>>read1Byte (../BitStream.st:141)
+BitStream>>build_huff_tree (../BitStream.st:95)
+HuffTree>>decompress: (../tree.st:329)
+HuffTree class>>new:output_file:opt:with: (../tree.st:220)
+UndefinedObject>>executeStatements (../hzip.st:117)

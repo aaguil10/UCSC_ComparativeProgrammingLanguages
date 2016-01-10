@@ -1,0 +1,14 @@
+Alejandro Aguilar
+aaguil10@ucsc.edu
+
+
+Please read text below!
+
+What you have to do: 
+The uncompressed files will not look the same unless you do the following: in BitStream.st line 226 there is a loop that goes from 0 to: x. x will be equal to 3 when I submit. This will take care of test 0, 1, 3, 5, and 6. For the others, x will need to be changed in order for the program to work.  For test4 change x to 5 and for test7 and change x to 4.
+
+Explanation:
+The compression works perfectly. When I check the binary, it outputs exactly what I want. The problem is that when I read it for the decompression, it reads in a random number of 0 bits and as a consequence destroys the alignment of the entire file. The function that I asked you to modify will skip those extra bits and then my program will work perfectly. 
+
+
+p.s. You look amazing today.

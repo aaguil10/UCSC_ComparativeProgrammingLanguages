@@ -1,0 +1,9 @@
+make-vector: contract violation
+  expected: exact-nonnegative-integer?
+  given: #f
+  argument position: 1st
+  other arguments...:
+   0
+  context...:
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:87:16: dim_imp
+   /afs/cats.ucsc.edu/users/n/aaguil10/Documents/cmps112/asg1/sbir-files/./../sbi.scm:528:21: control_flow

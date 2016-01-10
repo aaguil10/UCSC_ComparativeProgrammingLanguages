@@ -1,0 +1,445 @@
+#!/usr/bin/perl
+#Alejandro Aguilar aaguil10@ucsc.edu
+use strict;
+use warnings;
+
+use Getopt::Std;
+
+my $status = 0;
+END { exit $status; }
+$SIG{__WARN__} = sub {print STDERR "$0: @_"; $status = 1};
+$SIG{__DIE__} = sub {warn @_; $status = 1; exit};
+
+sub println {
+  print "@_\n";
+}
+
+sub cpush {
+  my ($yourarray, $yourvalue) = @_;
+  push(@{$yourarray}, $yourvalue) 
+    unless grep{$_ eq $yourvalue} @{$yourarray};
+}
+
+sub ccpush {
+  my ($yourarray, $yourvalue) = @_;
+  foreach (@{$yourvalue}){
+    cpush $yourarray, $_;
+  }
+}
+
+my $DEBUG_FLAG = 0;
+my $NON_EXECUTION_FLAG = 0;
+my $TARGET = undef;
+my $filename;
+my %macros;
+my %dep_graph;
+my %target_cmds;
+
+sub print_dep {
+  println "___________________________________________";
+  my $b = 1;
+  my $t;
+  my @tmp = %dep_graph;
+  foreach(@tmp){
+    if($b){
+      println "";
+      $b = 0;
+      $t = $_;
+      print "$_ : ";
+    }else{
+      $b = 1;
+      println @{$_};
+      foreach(@{$target_cmds{$t}}){
+        println "\t$_"
+      }
+    }
+  }
+  println "___________________________________________";
+}
+
+
+my %strsignal = (
+    0 => "Unknown signal 0",
+    1 => "Hangup",
+    2 => "Interrupt",
+    3 => "Quit",
+    4 => "Illegal instruction",
+    5 => "Trace/breakpoint trap",
+    6 => "Aborted",
+    7 => "Bus error",
+    8 => "Floating point exception",
+    9 => "Killed",
+   10 => "User defined signal 1",
+   11 => "Segmentation fault",
+   12 => "User defined signal 2",
+   13 => "Broken pipe",
+   14 => "Alarm clock",
+   15 => "Terminated",
+   16 => "Stack fault",
+   17 => "Child exited",
+   18 => "Continued",
+   19 => "Stopped (signal)",
+   20 => "Stopped",
+   21 => "Stopped (tty input)",
+   22 => "Stopped (tty output)",
+   23 => "Urgent I/O condition",
+   24 => "CPU time limit exceeded",
+   25 => "File size limit exceeded",
+   26 => "Virtual timer expired",
+   27 => "Profiling timer expired",
+   28 => "Window changed",
+   29 => "I/O possible",
+   30 => "Power failure",
+   31 => "Bad system call",
+   32 => "Unknown signal 32",
+   33 => "Unknown signal 33",
+   34 => "Real-time signal 0",
+   35 => "Real-time signal 1",
+   36 => "Real-time signal 2",
+   37 => "Real-time signal 3",
+   38 => "Real-time signal 4",
+   39 => "Real-time signal 5",
+   40 => "Real-time signal 6",
+   41 => "Real-time signal 7",
+   42 => "Real-time signal 8",
+   43 => "Real-time signal 9",
+   44 => "Real-time signal 10",
+   45 => "Real-time signal 11",
+   46 => "Real-time signal 12",
+   47 => "Real-time signal 13",
+   48 => "Real-time signal 14",
+   49 => "Real-time signal 15",
+   50 => "Real-time signal 16",
+   51 => "Real-time signal 17",
+   52 => "Real-time signal 18",
+   53 => "Real-time signal 19",
+   54 => "Real-time signal 20",
+   55 => "Real-time signal 21",
+   56 => "Real-time signal 22",
+   57 => "Real-time signal 23",
+   58 => "Real-time signal 24",
+   59 => "Real-time signal 25",
+   60 => "Real-time signal 26",
+   61 => "Real-time signal 27",
+   62 => "Real-time signal 28",
+   63 => "Real-time signal 29",
+   64 => "Real-time signal 30",
+);
+
+sub has_cmds {
+  my ($tar) = @_;
+  if ( exists $target_cmds{$tar} ){
+    if(0 == scalar @{$target_cmds{$tar}}){
+      return 0;
+    }else {
+      return 1;
+    }
+  }else{
+    return 0;
+  }
+}
+
+sub target_exist {
+  my ($tar) = @_;
+  if ( exists $dep_graph{$tar} ){
+    return 1;
+  }else{
+    return 0;
+  }
+}
+
+sub replace_macros {
+  my ($mac) = @_;
+  my @result;
+  if ($mac =~ /\${(.*)}+/) {
+    $mac = $1;
+  }
+  my @values;
+  if(exists $macros{$mac}){
+    @values = split m/\s+/, $macros{$mac};
+  }else {
+    cpush \@result, $mac;
+    return @result;
+  }
+  foreach(@values){
+    if ($_ =~ /\${(.*)}+/) {
+       my $m = $1;
+       my @a = replace_macros ($m);
+       ccpush \@result, \@a;
+    }else{ 
+     cpush \@result, $_;
+    }
+  }
+  return @result;
+}
+
+sub rm_macros_cmd {
+  my ($cmd, $tar) = @_;
+  my @values = split m/\s+/, $cmd;
+  my @result;
+  foreach (@values){
+    if($_ =~ /(\${.*})/){
+      my @a = replace_macros($1);
+      ccpush \@result, \@a;
+    }else{
+      cpush \@result, $_; 
+    }
+  }
+  $cmd = join(' ', @result);
+
+  #println $cmd;
+  $cmd =~ s/\$\$/\$/g;
+  my $first_dep = @{$dep_graph{$tar}}[0];
+  $cmd =~ s/\$</$first_dep/g;
+  $cmd =~ s/\$@/$tar/g;
+  #println $cmd;
+  return $cmd;
+}
+
+sub runCmd {
+  my ($cmd, $tar) = @_;
+  $cmd = rm_macros_cmd($cmd, $tar);
+  my $quitp = 1;
+  if($cmd =~ /-\s(.*)/){
+    $quitp = 0;
+    $cmd = $1;
+  }
+  println $cmd;
+  if(not $NON_EXECUTION_FLAG){
+    my $exitStatus = system $cmd;
+    my $term_signal = $? & 0x7F;
+    my $core_dumped = $? & 0x80;
+    my $exit_status = ($? >> 8) & 0xFF;
+    my $signal_msg = $strsignal{$term_signal};
+    #println "$signal_msg  core: $core_dumped status: $exit_status";
+    if ($exit_status == 1){
+      if($quitp){
+        print STDERR "make: *** [$tar] Error 1\n";
+        exit 1;
+      }else{
+        print STDERR "make: [$tar] Error 1 (ignored)\n";
+      }
+    }
+  }
+}
+
+sub mtime ($) {
+   my ($filename) = @_;
+   my @stat = stat $filename;
+   return @stat ? $stat[9] : undef;
+}
+
+sub exe_target {
+  my ($tar) = @_;
+  my @pre;
+  #unravel macros
+  foreach (@{$dep_graph{$tar}}) {
+      my @a = replace_macros($_);
+      ccpush \@pre, \@a;
+  }
+
+
+
+  if (-e $tar){ #if target is a file.
+    #print "$tar exists!\n";
+    my $nothing = 1;
+    foreach (@pre){
+      my $filetime = mtime($_);
+      my $tartime = mtime($tar);
+      if($tartime < $filetime){
+        $nothing = 0;
+      }else{
+        # if(exists $dep_graph{$_}){
+        #   exe_target($_);
+        #   $nothing = 0;
+        # }
+      }
+    }
+    if($nothing){
+      #println "make: Nothing to be done for `$tar'."; 
+      return $nothing;
+    }else{
+      foreach (@{$target_cmds{$tar}}){
+        runCmd($_, $tar);
+      }
+      return 0;
+    }
+  }else{ #if target is not a file.
+    my $nothing = 1;
+    foreach (@pre){
+      if(exists $dep_graph{$_}){
+        if(exe_target($_) == 0){
+          $nothing = 0;
+        }
+      }
+    }
+    foreach (@{$target_cmds{$tar}}){
+      runCmd($_, $tar);
+      $nothing = 0;
+    }
+    return $nothing;
+  }
+}
+
+
+
+
+sub process_wild_cards {
+  #print_dep;
+
+  #get all prerequasites
+  my @tmp;
+  for (values %dep_graph){
+      ccpush \@tmp, \@{$_}
+  }
+  my @total_pre;
+  foreach (@tmp){
+    my @a = replace_macros($_);
+    ccpush \@total_pre, \@a;
+  } 
+  #println @total_pre;
+
+  @tmp = ();
+  for (keys %dep_graph){
+      cpush \@tmp, $_;
+  }
+  my @total_tar;
+  foreach (@tmp){
+    my @a = replace_macros($_);
+    ccpush \@total_tar, \@a;
+  } 
+  #println @total_tar;
+
+  my @target_wildcard_matchings;
+  my @pre_wildcard_matchings;
+  my $wildcard;
+  foreach (@total_tar){
+    if($_ =~ /%(.*)/){
+      #println $1;
+      $wildcard = $1;
+      my $card = '\\' . $1;
+      @target_wildcard_matchings = grep(m/.*$card/, @total_tar);
+      @pre_wildcard_matchings = grep(m/.*$card/, @total_pre);
+    }
+  }
+  #println "tar: @target_wildcard_matchings";
+  #println "pre: @pre_wildcard_matchings";
+
+
+
+  #insert all possible wildcards
+  foreach(@pre_wildcard_matchings){
+    my $dep = $dep_graph{"%$wildcard"};
+    my $tmp = "\\" . $wildcard;
+    my $fill;
+    if ($_ =~ /(.*)$tmp/){
+      $fill = $1;
+    }
+
+    #for each depedancy of "%.o" add wildcard "foo.o : foo.c"
+    my $dep_side_card = @{$dep}[0];
+    if($dep_side_card =~ /%(.*)/){
+      my $t = $fill . $wildcard;
+      my $d = $fill . $1;
+
+      if(!target_exist($t)){
+        #replace foo.o and comands
+        cpush \@{$dep_graph{$t}}, $d;
+        $target_cmds{$t} = $target_cmds{"%$wildcard"};
+      }else{
+        if(!has_cmds($t)){
+          #replace foo.o and comands
+          #println "AHHHH";
+          cpush \@{$dep_graph{$t}}, $d;
+          $target_cmds{$t} = $target_cmds{"%$wildcard"};
+        }
+      }
+    }
+    
+  }
+  
+  #print_dep;
+
+}
+
+
+#main loop
+my %opts;
+getopts "fnd", \%opts;
+
+my $comment =  qr"#(.*)";
+my $command =  qr"\t(.*)";
+my $macro_val =  qr"^(\S+)\s*=\s*(.*?)\s*$";
+my $tar_pre = qr"^(\S+)\s*:\s*(.*?)\s*$";
+
+$DEBUG_FLAG = 1 if $opts{'d'};
+$NON_EXECUTION_FLAG = 1 if $opts{'n'};
+if($opts{'f'}){
+  $filename = $ARGV[0];
+}else{
+  $filename = "Makefile";
+}
+
+#Setup target
+if ($ARGV[0]) {
+  if($opts{'f'}){
+    if($ARGV[1]){
+          println "My Queso!";
+      $TARGET = $ARGV[1];
+    }
+  }else{
+    $TARGET = $ARGV[0];
+  }
+} 
+
+
+#read Makefile
+open my $file, "<$filename" or warn "$filename: $!\n" and next;
+my $curr_target = "";
+my $regret = 0;
+while (defined (my $line = <$file>)) {
+  chomp $line;
+  if($line =~ /$comment/){
+  }
+  if($line =~ /$command/){
+    if($regret){
+      $regret = 0;
+      my $cmds = ();
+      $target_cmds{$curr_target} = $cmds;
+      push @{$target_cmds{$curr_target}}, $1;
+    }else{
+      push @{$target_cmds{$curr_target}}, $1;
+    }
+  }
+  if($line =~ /$macro_val/){
+    my ($macro, $values) = ($1, $2);
+    $macros{$macro} = $values;
+  }
+  if($line =~ /$tar_pre/){
+    $regret = 0;
+    my ($target, $dependency) = ($1, $2);
+      my @dependencies = split m/\s+/, $dependency;
+      print "$0: syntax error: $line\n" and next unless defined $target;
+      my @cmds;
+      if(target_exist($target) && has_cmds($target)){
+        @cmds = @{$target_cmds{$target}};
+        $regret = 1;
+      }else{
+        @cmds = ();
+      }
+      my @a = replace_macros($target);
+      $target = $a[0];
+      $TARGET = $target if not defined $TARGET;
+      $dep_graph{$target} = \@dependencies;
+      $target_cmds{$target} = \@cmds;
+      $curr_target = $target;
+  }
+}
+close $file;
+
+process_wild_cards;
+
+#Execute target
+if (exe_target($TARGET) == 1){
+  println "make: Nothing to be done for `$TARGET'."; 
+}
